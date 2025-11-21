@@ -24,6 +24,8 @@ const allowedOrigins = [
   "http://localhost:8080",
   "http://localhost:8081",
   "http://localhost:8082",
+  "https://job-path-guard.vercel.app",
+  
   process.env.CLIENT_ORIGIN, // optional extra, e.g. production
 ].filter(Boolean);
 
