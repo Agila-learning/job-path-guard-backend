@@ -1,24 +1,50 @@
+// src/models/Resume.js
 import mongoose from "mongoose";
-const statusEnum = ["screening_done", "selected", "awaiting_hr", "rejected"];
 
 const historySchema = new mongoose.Schema(
-  { status: { type: String, enum: statusEnum, required: true }, by: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, note: String, at: { type: Date, default: Date.now } },
+  {
+    status: { type: String, required: true },
+    note: String,
+    by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    at: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
+const interviewSchema = new mongoose.Schema(
+  {
+    date: String,     // "2025-11-20"
+    time: String,     // "10:30"
+    mode: String,     // "Online - Google Meet"
+    link: String,     // meet/teams link or address
+    message: String,  // email body
+    scheduledBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    scheduledAt: { type: Date, default: Date.now },
+  },
   { _id: false }
 );
 
 const resumeSchema = new mongoose.Schema(
   {
     candidateName: { type: String, required: true },
-    email: { type: String, required: true, lowercase: true },
+    email: { type: String, required: true },
     phone: String,
     position: String,
     experienceYears: Number,
-    status: { type: String, enum: statusEnum, default: "awaiting_hr" },
+    status: {
+      type: String,
+      enum: ["awaiting_hr", "screening_done", "selected", "rejected"],
+      default: "awaiting_hr",
+    },
+    employeeFeedback: String,
+    hrFeedback: String,
     resumeFileName: String,
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    history: [historySchema]
+    history: [historySchema],
+    interview: interviewSchema,   // <–– NEW
   },
   { timestamps: true }
 );
 
-export default mongoose.model("Resume", resumeSchema);
+const Resume = mongoose.model("Resume", resumeSchema);
+export default Resume;
