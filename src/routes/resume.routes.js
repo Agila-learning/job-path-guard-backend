@@ -373,6 +373,11 @@ router.get(
   }
 );
 
+
+/**
+ * POST /api/resumes/:id/schedule-interview
+ * Schedule an interview & send an email.
+ */
 /**
  * POST /api/resumes/:id/schedule-interview
  * Schedule an interview & send an email.
@@ -391,6 +396,7 @@ router.post(
         return res.status(404).json({ message: "Resume not found." });
       }
 
+      // ✅ Always save interview details in DB
       resume.interview = {
         date: date || null,
         time: time || null,
@@ -404,32 +410,31 @@ router.post(
 
       await resume.save();
 
+      // ✅ Try to send email, but DO NOT break if it fails
       if (resume.email) {
-  try {
-    await sendEmail({
-      to: resume.email,
-      subject: "Interview Schedule",
-      html: `<p>Dear ${resume.candidateName || "Candidate"},</p>
-        <p>Your interview has been scheduled.</p>
-        <p><b>Date:</b> ${date || "-"}<br/>
-        <b>Time:</b> ${time || "-"}<br/>
-        <b>Mode:</b> ${mode || "-"}<br/>
-        <b>Link/Location:</b> ${link || location || "-"}</p>
-        <p>${message || ""}</p>`,
-    });
-  } catch (err) {
-    console.error("Failed to send interview email:", err);
-    return res.status(500).json({
-      message:
-        "Interview details saved, but email sending failed. Please check email configuration.",
-    });
-  }
-}
+        try {
+          await sendEmail({
+            to: resume.email,
+            subject: "Interview Schedule",
+            html: `<p>Dear ${resume.candidateName || "Candidate"},</p>
+              <p>Your interview has been scheduled.</p>
+              <p><b>Date:</b> ${date || "-"}<br/>
+              <b>Time:</b> ${time || "-"}<br/>
+              <b>Mode:</b> ${mode || "-"}<br/>
+              <b>Link/Location:</b> ${link || location || "-"}</p>
+              <p>${message || ""}</p>`,
+          });
+          console.log("Interview email sent to", resume.email);
+        } catch (err) {
+          console.error("Failed to send interview email:", err);
+          // we just log, no error response
+        }
+      }
 
-return res.json({
-  message: "Interview scheduled successfully.",
-  resume,
-});
+      return res.json({
+        message: "Interview scheduled successfully.",
+        resume,
+      });
     } catch (err) {
       console.error("Error scheduling interview:", err);
       return res
@@ -438,5 +443,6 @@ return res.json({
     }
   }
 );
+
 
 export default router;
