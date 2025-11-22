@@ -15,7 +15,6 @@ const router = Router();
 /**
  * POST /api/resumes
  * Create / upload a new resume.
- * Roles: ADMIN, HR, STAFF (adjust ROLES.STAFF if your enum is different)
  */
 router.post(
   "/",
@@ -107,7 +106,7 @@ router.get("/mine", auth, async (req, res) => {
 
 /**
  * PATCH /api/resumes/:id/status
- * Update the status (awaiting_hr, in_review, selected, rejected).
+ * Update the status.
  */
 router.patch(
   "/:id/status",
@@ -152,7 +151,7 @@ router.patch(
 
 /**
  * PATCH /api/resumes/:id/feedback
- * Update latestFeedback (employee or HR notes).
+ * Update feedback (HR vs Employee) + latestFeedback.
  */
 router.patch(
   "/:id/feedback",
@@ -163,23 +162,40 @@ router.patch(
       const { id } = req.params;
       const { feedback } = req.body;
 
-      if (typeof feedback !== "string") {
+      if (!feedback || typeof feedback !== "string") {
         return res
           .status(400)
           .json({ message: "Feedback text is required." });
       }
 
-      const updated = await Resume.findByIdAndUpdate(
-        id,
-        { latestFeedback: feedback },
-        { new: true }
-      );
-
-      if (!updated) {
+      const resume = await Resume.findById(id);
+      if (!resume) {
         return res.status(404).json({ message: "Resume not found." });
       }
 
-      return res.json(updated);
+      // Decide whether this is HR feedback or Employee feedback
+      if (req.user.role === ROLES.HR || req.user.role === ROLES.ADMIN) {
+        resume.hrFeedback = feedback;
+      } else {
+        // STAFF / employee
+        resume.employeeFeedback = feedback;
+      }
+
+      // Common field used in Employee dashboard
+      resume.latestFeedback = feedback;
+      resume.updatedAt = new Date();
+
+      // Optional: add entry to history
+      resume.history = resume.history || [];
+      resume.history.push({
+        status: resume.status || "awaiting_hr",
+        note: `Feedback updated by ${req.user.role}`,
+        by: req.user.id,
+        at: new Date(),
+      });
+
+      await resume.save();
+      return res.json(resume);
     } catch (err) {
       console.error("Error updating resume feedback:", err);
       return res
