@@ -382,6 +382,9 @@ router.get(
  * POST /api/resumes/:id/schedule-interview
  * Schedule an interview & send an email.
  */
+// src/routes/resume.routes.js (bottom part)
+
+// POST /api/resumes/:id/schedule-interview
 router.post(
   "/:id/schedule-interview",
   auth,
@@ -396,7 +399,7 @@ router.post(
         return res.status(404).json({ message: "Resume not found." });
       }
 
-      // ✅ Always save interview details in DB
+      // 1️⃣ Save interview details in DB
       resume.interview = {
         date: date || null,
         time: time || null,
@@ -410,8 +413,16 @@ router.post(
 
       await resume.save();
 
-      // ✅ Try to send email, but DO NOT break if it fails
-      if (resume.email) {
+      // 2️⃣ Immediately respond to frontend (so request is not pending)
+      res.json({
+        message: "Interview scheduled successfully.",
+        resume,
+      });
+
+      // 3️⃣ Fire-and-forget email send – runs AFTER response is sent
+      (async () => {
+        if (!resume.email) return;
+
         try {
           await sendEmail({
             to: resume.email,
@@ -427,16 +438,11 @@ router.post(
           console.log("Interview email sent to", resume.email);
         } catch (err) {
           console.error("Failed to send interview email:", err);
-          // we just log, no error response
         }
-      }
-
-      return res.json({
-        message: "Interview scheduled successfully.",
-        resume,
-      });
+      })();
     } catch (err) {
       console.error("Error scheduling interview:", err);
+      // Only DB-level errors come here
       return res
         .status(500)
         .json({ message: "Failed to schedule interview." });
